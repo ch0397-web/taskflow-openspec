@@ -15,11 +15,17 @@ IS_SQLITE = _raw_url.startswith("sqlite")
 
 def _build_async_url(url: str) -> str:
     """Convert Neon/standard postgres URL to SQLAlchemy asyncpg URL, stripping unsupported params."""
-    if url.startswith("postgresql://") or url.startswith("postgres://"):
+    # SQLite: just fix driver prefix if needed, no param stripping required
+    if url.startswith("sqlite"):
+        if url.startswith("sqlite://") and not url.startswith("sqlite+"):
+            return url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+        return url
+
+    # PostgreSQL: fix driver prefix
+    if url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+asyncpg://", 1)
-    elif url.startswith("sqlite://") and not url.startswith("sqlite+"):
-        return url.replace("sqlite://", "sqlite+aiosqlite://", 1)
 
     # Strip parameters unsupported by asyncpg driver
     parsed = urlparse(url)
