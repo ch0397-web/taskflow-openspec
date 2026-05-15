@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(dir D:taskflow-openspec *)",
+      "PowerShell(npm install *)",
+      "PowerShell(openspec *)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "$r = (openspec list --json 2>$null | ConvertFrom-Json); if ($r.changes.Count -eq 0) { 'OpenSpec: 변경 없음' } else { \"OpenSpec: $($r.changes.Count)개 활성 — $($r.changes.name -join ', ')\" }",
+    "refreshInterval": 30
+  }
+}
