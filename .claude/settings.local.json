@@ -4,7 +4,8 @@
       "WebSearch",
       "Bash(dir D:taskflow-openspec *)",
       "PowerShell(npm install *)",
-      "PowerShell(openspec *)"
+      "PowerShell(openspec *)",
+      "Skill(openspec-explore)"
     ]
   },
   "statusLine": {

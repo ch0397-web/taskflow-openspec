@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — 팀 선택</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gray-50">
+  <header class="bg-white shadow-sm px-6 py-3 flex justify-between items-center">
+    <span class="text-teal-600 font-bold text-lg">TaskFlow</span>
+    <button onclick="logout()" class="text-sm text-gray-500 hover:text-gray-700">로그아웃</button>
+  </header>
+
+  <div class="max-w-xl mx-auto mt-12 px-4">
+    <div class="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6 text-teal-700 text-sm">
+      ℹ 아직 팀에 소속되지 않았습니다. 팀을 만들거나 초대코드로 합류하세요.
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- 팀 만들기 -->
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-base font-semibold mb-4">+ 새 팀 만들기</h2>
+        <div id="create-error" class="hidden mb-3 text-red-500 text-sm"></div>
+        <div id="create-success" class="hidden">
+          <p class="text-green-600 font-medium mb-2">✓ 팀이 생성되었습니다!</p>
+          <p class="text-sm text-gray-500 mb-1">초대코드 (멤버에게 공유)</p>
+          <div class="flex items-center gap-2 mb-4">
+            <span id="invite-code-display" class="text-2xl font-mono font-bold text-teal-600 tracking-widest"></span>
+            <button onclick="copyCode()" class="text-xs text-gray-500 border rounded px-2 py-1 hover:bg-gray-50">📋 복사</button>
+          </div>
+          <button onclick="goToKanban()" class="w-full py-2 bg-teal-600 text-white rounded-lg text-sm font-medium">
+            칸반 시작하기 →
+          </button>
+        </div>
+        <form id="create-form" onsubmit="handleCreate(event)">
+          <input type="text" id="team-name" placeholder="팀 이름 (1–30자)"
+            class="w-full px-3 py-2 border rounded-lg text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-teal-400">
+          <button type="submit" id="btn-create"
+            class="w-full py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700">
+            만들기
+          </button>
+        </form>
+      </div>
+
+      <!-- 초대코드 합류 -->
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-base font-semibold mb-4">초대코드로 합류</h2>
+        <div id="join-error" class="hidden mb-3 text-red-500 text-sm"></div>
+        <form onsubmit="handleJoin(event)">
+          <input type="text" id="invite-input" placeholder="ABCD-1234"
+            maxlength="9"
+            class="w-full px-3 py-2 border rounded-lg text-sm mb-1 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-teal-400"
+            oninput="this.value = this.value.toUpperCase()">
+          <p class="text-xs text-gray-400 mb-3">형식: 대문자 4 + 숫자 4 (하이픈 포함)</p>
+          <button type="submit" id="btn-join"
+            class="w-full py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700">
+            합류
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    if (!requireAuth()) {}
+
+    // 이미 팀 있으면 kanban으로
+    if (getTeamId()) window.location.href = 'kanban.html';
+
+    const INVITE_RE = /^[A-Z]{4}-[0-9]{4}$/;
+
+    function logout() {
+      clearSession();
+      window.location.href = 'login.html';
+    }
+
+    function goToKanban() {
+      window.location.href = 'kanban.html';
+    }
+
+    function copyCode() {
+      const code = document.getElementById('invite-code-display').textContent;
+      navigator.clipboard.writeText(code).then(() => alert('복사됐습니다'));
+    }
+
+    async function handleCreate(e) {
+      e.preventDefault();
+      const name = document.getElementById('team-name').value.trim();
+      document.getElementById('create-error').classList.add('hidden');
+      if (!name || name.length > 30) {
+        document.getElementById('create-error').textContent = '팀 이름은 1~30자여야 합니다';
+        document.getElementById('create-error').classList.remove('hidden');
+        return;
+      }
+      const btn = document.getElementById('btn-create');
+      btn.textContent = '처리 중…'; btn.disabled = true;
+      try {
+        const data = await apiFetch('/teams', { method: 'POST', body: JSON.stringify({ name }) });
+        setSession(getToken(), data.id);
+        document.getElementById('create-form').classList.add('hidden');
+        document.getElementById('invite-code-display').textContent = data.invite_code;
+        document.getElementById('create-success').classList.remove('hidden');
+      } catch (err) {
+        document.getElementById('create-error').textContent = err.message;
+        document.getElementById('create-error').classList.remove('hidden');
+        btn.textContent = '만들기'; btn.disabled = false;
+      }
+    }
+
+    async function handleJoin(e) {
+      e.preventDefault();
+      const code = document.getElementById('invite-input').value.trim();
+      document.getElementById('join-error').classList.add('hidden');
+      if (!INVITE_RE.test(code)) {
+        document.getElementById('join-error').textContent = '형식이 올바르지 않습니다 (예: ABCD-1234)';
+        document.getElementById('join-error').classList.remove('hidden');
+        return;
+      }
+      const btn = document.getElementById('btn-join');
+      btn.textContent = '처리 중…'; btn.disabled = true;
+      try {
+        const data = await apiFetch('/teams/join', { method: 'POST', body: JSON.stringify({ invite_code: code }) });
+        setSession(getToken(), data.team.id);
+        window.location.href = 'kanban.html';
+      } catch (err) {
+        document.getElementById('join-error').textContent = err.message;
+        document.getElementById('join-error').classList.remove('hidden');
+        btn.textContent = '합류'; btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

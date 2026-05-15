@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — 로그인</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gray-50 flex items-center justify-center">
+  <div class="bg-white rounded-2xl shadow-md w-full max-w-sm p-8">
+    <h1 class="text-2xl font-bold text-center text-teal-600 mb-6">TaskFlow</h1>
+
+    <!-- 탭 -->
+    <div class="flex mb-6 border-b">
+      <button id="tab-login" onclick="switchTab('login')"
+        class="flex-1 py-2 text-sm font-medium text-teal-600 border-b-2 border-teal-600">로그인</button>
+      <button id="tab-signup" onclick="switchTab('signup')"
+        class="flex-1 py-2 text-sm font-medium text-gray-400">회원가입</button>
+    </div>
+
+    <!-- 에러 배너 -->
+    <div id="error-banner" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm"></div>
+
+    <!-- 로그인 폼 -->
+    <form id="form-login" onsubmit="handleLogin(event)">
+      <div class="mb-4">
+        <input type="email" id="login-email" placeholder="이메일"
+          class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400">
+      </div>
+      <div class="mb-6">
+        <input type="password" id="login-password" placeholder="비밀번호"
+          class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400">
+      </div>
+      <button type="submit" id="btn-login"
+        class="w-full py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition">
+        로그인
+      </button>
+    </form>
+
+    <!-- 회원가입 폼 -->
+    <form id="form-signup" class="hidden" onsubmit="handleSignup(event)">
+      <div class="mb-4">
+        <input type="email" id="signup-email" placeholder="이메일"
+          class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400">
+        <p id="err-email" class="hidden mt-1 text-xs text-red-500">올바른 이메일 형식이 아닙니다</p>
+      </div>
+      <div class="mb-6">
+        <input type="password" id="signup-password" placeholder="비밀번호 (8자 이상)"
+          class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400">
+        <p id="err-pw" class="hidden mt-1 text-xs text-red-500">비밀번호는 8자 이상이어야 합니다</p>
+      </div>
+      <button type="submit" id="btn-signup"
+        class="w-full py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition">
+        가입하기
+      </button>
+    </form>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    // 이미 로그인 상태면 redirect
+    if (getToken()) {
+      window.location.href = getTeamId() ? 'kanban.html' : 'team.html';
+    }
+
+    function switchTab(tab) {
+      const isLogin = tab === 'login';
+      document.getElementById('form-login').classList.toggle('hidden', !isLogin);
+      document.getElementById('form-signup').classList.toggle('hidden', isLogin);
+      document.getElementById('tab-login').className = isLogin
+        ? 'flex-1 py-2 text-sm font-medium text-teal-600 border-b-2 border-teal-600'
+        : 'flex-1 py-2 text-sm font-medium text-gray-400';
+      document.getElementById('tab-signup').className = !isLogin
+        ? 'flex-1 py-2 text-sm font-medium text-teal-600 border-b-2 border-teal-600'
+        : 'flex-1 py-2 text-sm font-medium text-gray-400';
+      hideError();
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('error-banner');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    function hideError() {
+      document.getElementById('error-banner').classList.add('hidden');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      hideError();
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const btn = document.getElementById('btn-login');
+      btn.textContent = '처리 중…'; btn.disabled = true;
+      try {
+        const data = await apiFetch('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+        });
+        setSession(data.token, data.user.team_id);
+        window.location.href = data.user.team_id ? 'kanban.html' : 'team.html';
+      } catch (err) {
+        showError(err.message);
+        btn.textContent = '로그인'; btn.disabled = false;
+      }
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+      hideError();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      let valid = true;
+
+      const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+      document.getElementById('err-email').classList.toggle('hidden', emailOk);
+      if (!emailOk) valid = false;
+
+      const pwOk = password.length >= 8;
+      document.getElementById('err-pw').classList.toggle('hidden', pwOk);
+      if (!pwOk) valid = false;
+
+      if (!valid) return;
+
+      const btn = document.getElementById('btn-signup');
+      btn.textContent = '처리 중…'; btn.disabled = true;
+      try {
+        const data = await apiFetch('/auth/signup', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+        });
+        setSession(data.token, data.user.team_id);
+        window.location.href = data.user.team_id ? 'kanban.html' : 'team.html';
+      } catch (err) {
+        showError(err.message);
+        btn.textContent = '가입하기'; btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

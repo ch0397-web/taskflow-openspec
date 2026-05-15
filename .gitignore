@@ -1,0 +1,12 @@
+.env
+taskflow.db
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+*.egg-info/
+.vercel/
+node_modules/
