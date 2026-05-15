@@ -6,7 +6,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./taskflow.db")
+_raw_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./taskflow.db").strip().lstrip("﻿")
+
+# Neon/Vercel provides postgresql:// — SQLAlchemy async needs postgresql+asyncpg://
+if _raw_url.startswith("postgresql://"):
+    DATABASE_URL = _raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif _raw_url.startswith("postgres://"):
+    DATABASE_URL = _raw_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif _raw_url.startswith("sqlite://") and not _raw_url.startswith("sqlite+"):
+    DATABASE_URL = _raw_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+else:
+    DATABASE_URL = _raw_url
 
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
