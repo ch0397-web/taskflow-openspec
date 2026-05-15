@@ -6,5 +6,5 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from mangum import Mangum
 from backend.main import app
 
-# lifespan="auto" lets FastAPI's startup event (init_db) run on cold start
-handler = Mangum(app, lifespan="auto")
+# Strip /api prefix so FastAPI routes match (vercel routes /api/* here)
+handler = Mangum(app, lifespan="auto", api_gateway_base_path="/api")
